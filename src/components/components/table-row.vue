@@ -11,13 +11,16 @@
       :active-cell="activeCell"
       />
     <td v-if="showDeleteButton">
-      <button @click="remove">Del</button>
+      <button
+        :disabled="!allowDelete" 
+        @click="remove">Del</button>
     </td>
   </tr>
 </template>
 
 <script>
 import TfxTableRowCell from './table-row-cell'
+import {emptyRow} from './utilites'
 
 export default {
   name: 'TfxTableRow',
@@ -43,6 +46,10 @@ export default {
     activeCell: {
       type: Object,
       default: () => {}
+    },
+    last: {
+      required: true,
+      type: Boolean
     }
   },
   computed: {
@@ -54,6 +61,11 @@ export default {
     isActive: {
       get() {
         return this.index === this.activeCell.row
+      }
+    },
+    allowDelete: {
+      get() {
+        return !this.last && !emptyRow(this.row)
       }
     }
   },

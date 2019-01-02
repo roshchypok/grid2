@@ -5,14 +5,13 @@
       tabindex="0"
       @keydown="keydown($event)"
       @focus="onFocus"
-      @blur="onBlur"
       v-click-outside="onClickOutside">
       <caption v-if="showCaption">{{ caption }}</caption>
       <thead v-if="showHead">
         <tr>
           <th v-if="showRowNumber">&nbsp;</th>
           <tfx-table-cell-head
-            v-for="(column, index) in columns"
+            v-for="(column, index) in tableColumns"
             :key="index"
             :column="column" />
           <th v-if="showDeleteButton">&nbsp;</th>
@@ -27,7 +26,8 @@
           :row="rows[rowIndex]"
           :active-cell="activeCell"
           :show-row-number="showRowNumber"
-          :show-delete-button="showDeleteButton"/>
+          :show-delete-button="showDeleteButton"
+          :last="rowIndex === maxRowIndex"/>
       </tbody>
     </table>
   </div>
@@ -35,9 +35,9 @@
 
 <script>
 import Vue from 'vue'
-import TfxTableRow from './table-row'
-import TfxTableCellHead from './table-cell-head'
-import {keyArrowEvent, present, defaultCompare} from './utilites'
+import TfxTableRow from './components/table-row'
+import TfxTableCellHead from './components/table-cell-head'
+import {keyArrowEvent, present, defaultCompare, importData, exportData, emptyRow} from './components/utilites'
 
 export default {
   name: 'TfxTable',
@@ -72,6 +72,14 @@ export default {
       required: true,
       type: Array,
       default: () => []
+    },
+    change: {
+      required: true,
+      type: Object | Function
+    },
+    afterSortChange: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -80,21 +88,12 @@ export default {
       activeCell: {col: -1, row: -1},
       cell: null,
       active: false,
-      sort: {
-        column: null,
-        direction: 0
-      }
+      tableColumns: []
     }
   },
   mounted() {
-    this.eventBus.$on('table-cell-activate', this.changeActiveCell)
-    this.eventBus.$on('table-cell-update', this.updateCellValue)
-    this.eventBus.$on('table-row-remove', this.removeRow)
-    this.eventBus.$on('table-column-sort', this.onSort)
-    Vue.set(this, 'rows',  this.tableData)
-    this.rows.forEach((row, index) => row.index = index)
-    const allowAddEmptyRow = this.rows[this.rows.length -1].some((v) => present(v))
-    if (allowAddEmptyRow) this.addEmptyRow()
+    this.initEvents()
+    this.initRows()
   },
   computed: {
     eventBus: {
@@ -107,6 +106,11 @@ export default {
         return this.rows.length
       }
     },
+    maxRowIndex: {
+      get() {
+        return this.countRows - 1
+      }
+    },
     countCols: {
       get() {
         return this.columns.length
@@ -114,7 +118,7 @@ export default {
     },
     maxColIndex: {
       get() {
-        return this.columns.length - 1
+        return this.countCols - 1
       }
     },
     allowNavigateCell: {
@@ -124,19 +128,28 @@ export default {
     }
   },
   methods: {
+    initEvents() {
+      this.eventBus.$on('table-cell-activate', this.changeActiveCell)
+      this.eventBus.$on('table-cell-update', this.updateCellValue)
+      this.eventBus.$on('table-row-remove', this.removeRow)
+      this.eventBus.$on('table-column-sort', this.onSort)
+    },
+    initRows() {
+      const imps = importData(this.columns, this.tableData)
+      Vue.set(this, 'rows',  imps.rows)
+      Vue.set(this, 'tableColumns', imps.columns)
+      this.rows.forEach((row, index) => row.index = index)
+      if (!emptyRow(this.rows[this.maxRowIndex])) this.addEmptyRow()
+    },
     keydown(e) {
         const key = keyArrowEvent(e)
-
         if (key && this.allowNavigateCell) {
-          if (key === 'ArrowDown' && this.activeCell.row < (this.countRows - 1)) this.activeCell.row = this.activeCell.row + 1
+          if (key === 'ArrowDown' && this.activeCell.row < this.maxRowIndex) this.activeCell.row = this.activeCell.row + 1
           if (key === 'ArrowUp' && this.activeCell.row > 0) this.activeCell.row = this.activeCell.row - 1
           if (key === 'ArrowLeft' && this.activeCell.col > 0) this.activeCell.col = this.activeCell.col - 1
-          if (key === 'ArrowRight' && this.activeCell.col < (this.countCols - 1)) this.activeCell.col = this.activeCell.col + 1
+          if (key === 'ArrowRight' && this.activeCell.col < this.maxColIndex) this.activeCell.col = this.activeCell.col + 1
           if (this.activeCell.row < 0) this.activeCell.row = 0
           if (this.activeCell.col < 0) this.activeCell.col = 0
-        } else if (e.key === 'Tab') {
-          console.log('Tab')
-          //this.cellActive.col < this.maxColIndex ? this.gotoCol(1) : this.cellActive.col
         }
     },
     changeActiveCell(cell) {
@@ -146,13 +159,9 @@ export default {
       this.active = true
     },
     updateCellValue(value) {
-      Vue.set(this.rows[this.activeCell.row],String(this.activeCell.col), value)
-      if (this.activeCell.row === (this.countRows - 1)) {
-        const allowAddEmptyRow = this.rows[this.rows.length - 1].some((v) => present(v))
-        this.addEmptyRow()
-      }
-      console.log(this.countRows)
-      console.log(this.rows)
+      Vue.set(this.rows[this.activeCell.row],String(this.activeCell.col), value || '')
+      if (this.activeCell.row === this.maxRowIndex && !emptyRow(this.rows[this.maxRowIndex])) this.addEmptyRow()
+      this.onChange()
     },
     addEmptyRow() {
       const emptyRow = []
@@ -162,12 +171,10 @@ export default {
     },
     removeRow(index) {
       this.rows.splice(index, 1)
+      this.onChange()
     },
     onFocus() {
       this.active = true
-    },
-    onBlur() {
-      console.log('table blur')
     },
     onClickOutside() {
       if (this.active) {
@@ -176,14 +183,23 @@ export default {
       }
     },
     onSort({column, direction}) {
-      console.log('sort')
-      const sortIndex = this.columns.indexOf(column)
+      const sortIndex = direction === 0 ? 'index' : this.tableColumns.indexOf(column)
+      const sortDirection = direction === 0 ? 1 : direction
       this.rows.sort((a, b) => {
-        if (a.every((v) => !present(v))) return 1
-        if (a[sortIndex] > b[sortIndex]) return 1 * direction
-        if (a[sortIndex] < b[sortIndex]) return -1 * direction
+        if (emptyRow(a)) return 1
+        if (a[sortIndex] > b[sortIndex]) return 1 * sortDirection
+        if (a[sortIndex] < b[sortIndex]) return -1 * sortDirection
         return 0
       })
+      if (this.afterSortChange) this.onChange()
+    },
+    onChange() {
+      const onChangeData = exportData(this.columns, this.rows)
+      if (typeof(this.change) === 'function') {
+        this.change(onChangeData)
+      } else {
+        if (this.change.onChange) this.change.onChange(onChangeData)
+      }
     }
   }
 }

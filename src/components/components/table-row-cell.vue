@@ -17,8 +17,8 @@
 </template>
 
 <script>
-import TfxTableCellRender from './table-cell-render'
-import TfxTableCellEditor from './table-cell-editor'
+import TfxTableCellRender from './renders/table-cell-render'
+import TfxTableCellEditor from './editors/table-cell-editor'
 import {present, allowedKeyForAutoEditing} from './utilites'
 
 export default {
@@ -50,9 +50,6 @@ export default {
       editingValue: null
     }
   },
-  mounted() {
-    //this.value = this.cellValue
-  },
   computed: {
     eventBus: {
       get() {
@@ -61,7 +58,6 @@ export default {
     },
     value: {
       get() {
-        //return this.eventBus.rows[this.row][this.col]
         return this.cellValue
       }
     },
@@ -102,9 +98,12 @@ export default {
         if (this.isClickEditing) this.startEditing()
       }
     },
+    focus() {
+      this.$refs.td.focus()
+    },
     activate() {
       this.eventBus.$emit('table-cell-activate', this)
-      this.$refs.td.focus()
+      this.focus();
     },
     deactivate() {
       if (this.isEditing) this.endEditing(true)
@@ -119,25 +118,17 @@ export default {
       this.isEditing = false
       this.$off('table-cell-editor-update-value')
       this.$off('table-cell-editor-end')
-      this.$refs.td.focus()
-      if (action && this.value !== this.editingValue) {
-        this.eventBus.$emit('table-cell-update', this.editingValue)
-      }
+      this.focus()
+      if (action && this.value !== this.editingValue) this.eventBus.$emit('table-cell-update', this.editingValue)
     },
     updateEditingValue(value) {
       this.editingValue = value
-      if (this.isClickEditing) {
-        this.endEditing(true)
-      }
+      if (this.isClickEditing) this.endEditing(true)
     }
   },
   watch: {
     isActive(value) {
-      if (value) {
-        this.activate()
-      } else {
-        this.deactivate()
-      }
+      value ? this.activate() : this.deactivate()
     }
   }
 }

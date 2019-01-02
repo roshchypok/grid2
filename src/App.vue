@@ -1,8 +1,8 @@
 <template>
   <div id="app">
-    <tfx-table :columns="cols" :table-data="rows"/>
+    <tfx-table :columns="cols" :table-data="rows" :change="tableChange"/>
     <br>
-    <tfx-table :columns="cols" :table-data="rows2" :show-head="false"/>
+    <tfx-table :columns="cols" :table-data="rows2" :show-head="false" :change="tableChange"/>
   </div>
 </template>
 
@@ -46,6 +46,9 @@ export default {
   mounted() {
   },
   methods: {
+    tableChange(table) {
+      console.log('table changed ', table)
+    }
   }
 }
 </script>

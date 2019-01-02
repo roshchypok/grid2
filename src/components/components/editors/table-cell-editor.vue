@@ -6,7 +6,7 @@
       :options="listOptions"
       :block-keys="['Escape']"
       :showLabels="false"
-      :hideSelected="true"
+      :hideSelected="false"
       :tabindex.Number="-1"
       ref="element"
     />
@@ -22,7 +22,7 @@
 
 <script>
 import VueMultiselect from 'vue-multiselect'
-import {present} from './utilites'
+import {present} from './../utilites'
 
 export default {
   name: 'TfxTableCellEditor',
@@ -59,7 +59,7 @@ export default {
     },
     listOptions: {
       get() {
-        return this.isListEditor ? [''].concat(this.column.options()) : []
+        return this.isListEditor ? this.column.options() : []
       }
     }
   },
