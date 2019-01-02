@@ -63,6 +63,10 @@ export default {
       type: Boolean,
       default: true
     },
+    deleteConfirmation: {
+      type: Function,
+      default: null
+    },
     columns: {
       required: true,
       type: Array,
@@ -131,7 +135,7 @@ export default {
     initEvents() {
       this.eventBus.$on('table-cell-activate', this.changeActiveCell)
       this.eventBus.$on('table-cell-update', this.updateCellValue)
-      this.eventBus.$on('table-row-remove', this.removeRow)
+      this.eventBus.$on('table-row-remove', this.onRemoveRow)
       this.eventBus.$on('table-column-sort', this.onSort)
     },
     initRows() {
@@ -168,6 +172,13 @@ export default {
       this.rows[0].forEach((c) => emptyRow.push(''))
       emptyRow.index = this.rows.length
       this.rows.push(emptyRow)
+    },
+    onRemoveRow(index) {
+      if (this.deleteConfirmation) {
+        this.deleteConfirmation(this.rows[index], () => this.removeRow(index))
+      } else {
+        this.removeRow(index)
+      }
     },
     removeRow(index) {
       this.rows.splice(index, 1)

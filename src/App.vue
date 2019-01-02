@@ -1,6 +1,8 @@
 <template>
   <div id="app">
-    <tfx-table :columns="cols" :table-data="rows" :change="tableChange"/>
+    <tfx-table :columns="cols" :table-data="rows" :change="tableChange"
+    :deleteConfirmation="deleteRow"
+    />
     <br>
     <tfx-table :columns="cols" :table-data="rows2" :show-head="false" :change="tableChange"/>
   </div>
@@ -48,6 +50,11 @@ export default {
   methods: {
     tableChange(table) {
       console.log('table changed ', table)
+    },
+    deleteRow(row, callback) {
+      if (confirm(`Delete row with index = ${row.index + 1}`)) {
+        callback()
+      }
     }
   }
 }
